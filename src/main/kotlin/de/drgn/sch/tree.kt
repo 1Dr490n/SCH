@@ -389,6 +389,9 @@ abstract class TreeObject(val tokens: TokenLine, val type: DType) {
 class TreeIntLiteral(tokens: TokenLine, val value: Long, type: DTInt) : TreeObject(tokens, type) {
     override fun _ir(builder: IRBuilder.FunctionBuilder) = VInt(type.ir() as TInt, value)
 }
+class TreeFloatLiteral(tokens: TokenLine, val value: Double, type: DTFloat) : TreeObject(tokens, type) {
+    override fun _ir(builder: IRBuilder.FunctionBuilder) = VFloat(type.ir() as TFloat, value)
+}
 class TreeStringLiteral(tokens: TokenLine, val value: String) : TreeObject(tokens, DTArray(DTI8)) {
     override fun _ir(builder: IRBuilder.FunctionBuilder): VValue {
         val v = TreeFuncCall.process(
@@ -409,8 +412,8 @@ class TreeCast(tokens: TokenLine, val obj: TreeObject, to: DType) : TreeObject(t
     override fun _ir(builder: IRBuilder.FunctionBuilder): VValue {
         return when {
             obj.type is DTInt && type is DTInt -> {
-                if(obj.type.bits < type.bits) builder.sext(obj.ir(builder), type.ir())
-                else builder.trunc(obj.ir(builder), type.ir())
+                if(obj.type.bits < type.bits) builder.ext(obj.type.signed, obj.ir(builder), type.ir)
+                else builder.trunc(obj.ir(builder), type.ir)
             }
             obj.type is DTClass && type is DTClass -> {
                 val o = obj.ir(builder)
@@ -425,7 +428,14 @@ class TreeCast(tokens: TokenLine, val obj: TreeObject, to: DType) : TreeObject(t
                 )
                 o
             }
-            else -> obj.ir(builder)
+            obj.type is DTInt && type is DTFloat -> {
+                builder.itofp(obj.type.signed, obj.ir(builder), type.ir)
+            }
+            obj.type is DTFloat && type is DTFloat -> {
+                if(obj.type.bits < type.bits) builder.fpext(obj.ir(builder), type.ir)
+                else builder.fptrunc(obj.ir(builder), type.ir)
+            }
+            else -> TODO("${obj.type} to $type")//obj.ir(builder)
         }
     }
 }
@@ -626,7 +636,7 @@ class TreeSign(tokens: TokenLine, val sign: Token.Sign, val obj: TreeObject) : T
     override fun _ir(builder: IRBuilder.FunctionBuilder): VValue {
         val o = obj.ir(builder)
         if(sign.c == '+') return o
-        return builder.multiply(o, VInt(o.type as TInt, -1))
+        return builder.mul(o, VInt(o.type as TInt, -1))
     }
 }
 class TreeThis(tokens: TokenLine) : TreeObject(tokens, openFuncDefinitions.peek().let { it.inClass?:it.constructorOf!! }) {

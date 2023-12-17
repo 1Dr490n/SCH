@@ -130,14 +130,17 @@ fun main(args: Array<String>) {
         it.deleteOnExit()
     }.writeBytes(object{}.javaClass.classLoader.getResourceAsStream("lib.o").readAllBytes())
 
+    if(emitLlvm) {
+        File(o?:"out.ll").writeText(File("__TEMP__.ll").readText())
+    } else {
+        val args = mutableListOf("clang", "__TEMP__.ll", "__TEMP__.o")
+        if (o != null) args += "-o $o"
+        if (emitLlvm) args += "-S -emit-llvm"
+        if (s) args += "-S"
 
-    val args = mutableListOf("clang", "__TEMP__.ll", "__TEMP__.o")
-    if(o != null) args += "-o $o"
-    if(emitLlvm) args += "-S -emit-llvm"
-    if(s) args += "-S"
-
-    val p = Runtime.getRuntime().exec(args.toTypedArray())
-    println(p.inputStream.bufferedReader().readText())
-    val err = p.errorStream.bufferedReader().readText()
-    println(err)
+        val p = Runtime.getRuntime().exec(args.joinToString(" "))
+        println(p.inputStream.bufferedReader().readText())
+        val err = p.errorStream.bufferedReader().readText()
+        println(err)
+    }
 }

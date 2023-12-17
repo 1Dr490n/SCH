@@ -3,10 +3,7 @@ package de.drgn.sch
 import de.drgn.irbuilder.FuncSignature
 import de.drgn.irbuilder.IRBuilder
 import de.drgn.irbuilder.types.*
-import de.drgn.irbuilder.values.VInt
-import de.drgn.irbuilder.values.VNull
-import de.drgn.irbuilder.values.VUndef
-import de.drgn.irbuilder.values.VValue
+import de.drgn.irbuilder.values.*
 
 abstract class DType {
     abstract fun ir(): TType
@@ -51,6 +48,14 @@ object DTU8 : DTInt(false, 8, tI8)
 object DTU16 : DTInt(false, 16, tI16)
 object DTU32 : DTInt(false, 32, tI32)
 object DTU64 : DTInt(false, 64, tI64)
+
+abstract class DTFloat(val bits: Int, val ir: TFloat) : DType() {
+    override fun ir() = ir
+    override fun toString() = "f$bits"
+    override fun undefined() = VFloat(ir, .0)
+}
+object DTF32 : DTFloat(32, tFloat)
+object DTF64 : DTFloat(64, tDouble)
 
 abstract class DTComplexType : DType() {
     override fun ir() = TPtr

@@ -101,6 +101,7 @@ fun parse(file: DFile, ite: ListIterator<TokenLine>) {
                         line.string().matches(Regex("å\\(.+}")) -> {
                             if(constructor != null) illegal("Constructor already declared", constructor!!.name.line, line[0].line)
                             val (preCode, code) = line.beforeBrackets()!!
+
                             val tokenArgs = preCode.drop(2).dropLast(1).splitBrackets<Token.Comma>()
                             val isVararg = tokenArgs.lastOrNull()?.last() is Token.Vararg
                             val args = (if(isVararg) tokenArgs.dropLast(1) else tokenArgs).map {
@@ -159,6 +160,7 @@ fun parseType(tokens: TokenLine, isReturnType: Boolean = false): ASTType {
             first.name == "void" -> if(isReturnType) ASTTVoid(tokens) else illegal("'void' can only be used as a return type", first.line)
             first.name == "bool" -> ASTTBool(tokens)
             first.name.matches(Regex("[ui](8|16|32|64)")) -> ASTTInt(tokens, first.name)
+            first.name.matches(Regex("f(32|64)")) -> ASTTFloat(tokens, first.name)
             else -> ASTTName(tokens, first)
         }
         tokens.string().matches(Regex(".+\\[]")) -> ASTTArray(tokens, parseType(tokens.dropLast(2)))
@@ -276,6 +278,7 @@ fun parseObject(tokens: TokenLine, isStatement: Boolean = false): ASTObject {
             is Token.This -> return ASTThis(tokens)
         }
     }
+    if(tokens.string() == "i.n") return ASTFloatLiteral(tokens)
 
     if(tokens.last() is Token.Vararg) {
         return ASTUnwrap(tokens, parseObject(tokens.dropLast(1)))
@@ -440,6 +443,7 @@ fun parseObject(tokens: TokenLine, isStatement: Boolean = false): ASTObject {
     if(tokens.last() is Token.NullAssert) return ASTNullAssert(tokens, parseObject(tokens.dropLast(1)))
     if(tokens.last() is Token.Increase) return ASTIncrease(tokens, parseStorage(tokens.dropLast(1)))
     tokens.getOperators { it is Token.Dot }?.let {  (_, before, after) ->
+        if(before.isEmpty()) return@let
         val o = parseObject(before)
         if(after.string() == "n") return ASTMember(tokens, o, after[0] as Token.Name)
     }

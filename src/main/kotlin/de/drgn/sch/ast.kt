@@ -19,6 +19,9 @@ class ASTTVoid(tokens: TokenLine) : ASTType(tokens) {
 class ASTTBool(tokens: TokenLine) : ASTType(tokens) {
     override fun tree() = DTBool
 }
+class ASTTFloat(tokens: TokenLine, val name: String) : ASTType(tokens) {
+    override fun tree() = if(name == "f32") DTF32 else DTF64
+}
 class ASTTInt(tokens: TokenLine, val name: String) : ASTType(tokens) {
     override fun tree() = when(name) {
         "i8" -> DTI8
@@ -264,12 +267,17 @@ class ASTIntrinsicDeclaration(
                     }
                     sb.append('%').append(t.first)
                     resArgs += t.second.ir(builder)
-                    if (parameter == "x") sb.append('x') else if(parameter.isEmpty()) sb.append('d')
+                    if (parameter == "x") sb.append('x') else if(parameter.isEmpty()) sb.append('d') else illegalIntrinsic("Illegal formatting specifier for type '$type'", obj.tokens.line())
+                }
+                is DTFloat -> {
+                    sb.append("%${if(parameter.isEmpty()) "" else "." + (parameter.toUIntOrNull()?:illegalIntrinsic("Illegal formatting specifier for type '$type'", obj.tokens.line()))}f")
+                    resArgs += obj.ir(builder)
                 }
 
                 is DTBool -> {
                     sb.append("%s")
                     resArgs += builder.select(obj.ir(builder), VString("true"), VString("false"))
+                    if(parameter.isNotEmpty()) illegalIntrinsic("Illegal formatting specifier for type 'bool'", obj.tokens.line())
                 }
 
                 is DTArray -> {
@@ -583,6 +591,15 @@ abstract class ASTObject(tokens: TokenLine, val isOnlyObject: Boolean = true) : 
 }
 class ASTIntLiteral(tokens: TokenLine, val literal: Token.IntLiteral) : ASTObject(tokens) {
     override fun _obj(type: DType?): TreeObject {
+        if(type is DTFloat) {
+            val value = when(type) {
+                null -> literal.value.toDoubleOrNull()?:illegal("Float literal cannot be stored", tokens.line())
+                is DTF32 -> literal.value.toFloatOrNull()?:illegal("Float literal cannot be stored in a 'f32'", tokens.line())
+                is DTF64 -> literal.value.toDoubleOrNull()?:illegal("Float literal cannot be stored in a 'f64'", tokens.line())
+                else -> TODO()
+            }.toDouble()
+            return TreeFloatLiteral(tokens, value, type)
+        }
         if(type !is DTInt?) illegal("Expected '$type' but found integer", tokens.line())
         when(type) {
             null -> {
@@ -608,6 +625,19 @@ class ASTIntLiteral(tokens: TokenLine, val literal: Token.IntLiteral) : ASTObjec
         }
         val value = literal.value.toLong()
         return TreeIntLiteral(tokens, value, type)
+    }
+}
+class ASTFloatLiteral(tokens: TokenLine) : ASTObject(tokens) {
+    override fun _obj(type: DType?): TreeObject {
+        if(type !is DTFloat?) illegal("Expected '$type' but found float", tokens.line())
+        val literal = (tokens[0] as Token.IntLiteral).value + '.' + (tokens[2] as Token.Name).name
+        val value = when(type) {
+            null -> literal.toDoubleOrNull()?:illegal("Float literal cannot be stored", tokens.line())
+            is DTF32 -> literal.toFloatOrNull()?:illegal("Float literal cannot be stored in a 'f32'", tokens.line())
+            is DTF64 -> literal.toDoubleOrNull()?:illegal("Float literal cannot be stored in a 'f64'", tokens.line())
+            else -> TODO()
+        }.toDouble()
+        return TreeFloatLiteral(tokens, value, type?:DTF64)
     }
 }
 class ASTStringLiteral(tokens: TokenLine, val literal: Token.StringLiteral) : ASTObject(tokens) {
@@ -877,24 +907,33 @@ class ASTMember(tokens: TokenLine, val obj: ASTObject, val property: Token.Name)
                 if(index == -1) illegal("Tuple element '${o.type}.$property' doesn't exist", property.line)
                 return TreeTupleMember(tokens, o, index)
             }
-            else -> illegal("Expected class object but found '${o.type}'", obj.tokens.line())
+            else -> illegal("Expected class object or tuple but found '${o.type}'", obj.tokens.line())
         }
     }
 }
-private fun checkInt(tokens: TokenLine, l: TreeObject, r: TreeObject): Pair<TreeObject, TreeObject> {
+private fun checkNumber(tokens: TokenLine, l: TreeObject, r: TreeObject): Pair<TreeObject, TreeObject> {
     var l = l
     var r = r
-    if (l.type !is DTInt) illegal("Expected int but found '${l.type}'", l.tokens.line())
-    if (r.type !is DTInt) illegal("Expected int but found '${r.type}'", r.tokens.line())
-    if ((l.type as DTInt).ir.size > (r.type as DTInt).ir.size) {
-        r = TreeCast(tokens, r, l.type)
-    } else if ((r.type as DTInt).ir.size > (l.type as DTInt).ir.size) {
-        l = TreeCast(tokens, l, r.type)
+
+    if(l.type is DTFloat || r.type is DTFloat) {
+        if (r.type !is DTFloat || r.type is DTF32 && l.type is DTF64) {
+            r = TreeCast(tokens, r, l.type)
+        } else if (l.type !is DTFloat || l.type is DTF32 && r.type is DTF64) {
+            l = TreeCast(tokens, l, r.type)
+        }
+    } else {
+        if (l.type !is DTInt) illegal("Expected integer but found '${l.type}'", l.tokens.line())
+        if (r.type !is DTInt) illegal("Expected integer but found '${r.type}'", r.tokens.line())
+        if ((l.type as DTInt).ir.size > (r.type as DTInt).ir.size) {
+            r = TreeCast(tokens, r, l.type)
+        } else if ((r.type as DTInt).ir.size > (l.type as DTInt).ir.size) {
+            l = TreeCast(tokens, l, r.type)
+        }
+        if ((l.type as DTInt).signed != (r.type as DTInt).signed) illegal(
+            "Cannot mix signed and unsigned value",
+            tokens.line()
+        )
     }
-    if ((l.type as DTInt).signed != (r.type as DTInt).signed) illegal(
-        "Cannot mix signed and unsigned value",
-        tokens.line()
-    )
     return l to r
 }
 class ASTBinaryOperator(tokens: TokenLine, val operator: Token, val left: ASTObject, val right: ASTObject) : ASTObject(tokens) {
@@ -906,8 +945,8 @@ class ASTBinaryOperator(tokens: TokenLine, val operator: Token, val left: ASTObj
         val func: ((IRBuilder.FunctionBuilder, TreeObject, TreeObject, DType) -> VValue)?,
         val irFunc: (IRBuilder.FunctionBuilder, VValue, VValue, DType) -> VValue
     ) {
-        sealed class Calculation(f: (IRBuilder.FunctionBuilder, VValue, VValue, DType) -> VValue) : Operator(null, ::checkInt, { t -> t.type }, null, f)
-        sealed class Comparator(f: (IRBuilder.FunctionBuilder, VValue, VValue, DType) -> VValue) : Operator(null, ::checkInt, { _ -> DTBool }, null, f)
+        sealed class Calculation(f: (IRBuilder.FunctionBuilder, VValue, VValue, DType) -> VValue) : Operator(null, ::checkNumber, { t -> t.type }, null, f)
+        sealed class Comparator(f: (IRBuilder.FunctionBuilder, VValue, VValue, DType) -> VValue) : Operator(null, ::checkNumber, { _ -> DTBool }, null, f)
         sealed class Logical(b: Boolean)
             : Operator(DTBool, { _, l, r -> l to r }, { _ -> DTBool }, { builder, l, r, _ ->
             val l = l.ir(builder)
@@ -924,8 +963,16 @@ class ASTBinaryOperator(tokens: TokenLine, val operator: Token, val left: ASTObj
             builder.phi(tI1, VInt(tI1, if(b) 1 else 0) to ".$h", r to ".$y")
         }, { _, _, _, _ -> TODO() })
 
-        object Plus : Operator(null, ::checkInt, { t -> t.type }, null, { builder, l, r, _ -> builder.add(l, r) })
-        object Modulo : Calculation({ builder, l, r, type -> builder.modulo(l, r, (type as DTInt).signed) })
+        object Plus : Operator(null, ::checkNumber, { t -> t.type }, null, { builder, l, r, t -> if(t is DTFloat) builder.fadd(l, r) else builder.add(l, r) })
+        object Minus : Operator(null, ::checkNumber, { t -> t.type }, null, { builder, l, r, t -> if(t is DTFloat) builder.fsub(l, r) else builder.sub(l, r) })
+        object Multiply : Operator(null, ::checkNumber, { t -> t.type }, null, { builder, l, r, t -> if(t is DTFloat) builder.fmul(l, r) else builder.mul(l, r) })
+
+        object Divide : Calculation({ builder, l, r, t ->
+            if(t is DTFloat) builder.fdiv(l, r) else builder.div((t as DTInt).signed, l, r)
+        })
+        object Modulo : Calculation({ builder, l, r, t ->
+            if(t is DTFloat) builder.frem(l, r) else builder.rem((t as DTInt).signed, l, r)
+        })
         object LessThan : Comparator({ builder, l, r, type -> builder.icmp("${if((type as DTInt).signed) 's' else 'u'}lt", l, r) })
         object LessEqual : Comparator({ builder, l, r, type -> builder.icmp("${if((type as DTInt).signed) 's' else 'u'}le", l, r) })
         object Equals : Comparator({ builder, l, r, _ -> builder.icmp("eq", l, r) })
