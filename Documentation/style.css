@@ -1,0 +1,170 @@
+body {
+	font-family: monospace;
+	font-size:  17px;
+	background: #333333;
+	tab-size: 4;
+	line-height: 20px;
+	color:  white;
+}
+.main {
+	padding-left: 300px;
+	width: 1000px;
+	padding-top: 70px;
+}
+.c {
+	white-space: pre;
+	background: #222222;
+	border-radius: 10px;
+
+	padding-top: 10px;
+	padding-left: 10px;
+	padding-bottom: 10px;
+
+	font-size: 15px;
+
+	margin-top: 10px;
+	margin-bottom: 10px;
+}
+
+.inline-code {
+	background: #222222;
+	color: white;
+	border-radius: 5px;
+	padding-left: 3px;
+	padding-right: 3px;
+	padding-bottom: 3px;
+	font-size: 15px;
+}
+
+h2 {
+	margin-top: 70px;
+}
+h3 {
+	margin-top: 3	0px;
+	margin-bottom: 0px;
+}
+
+table, td {
+	border: solid 1px white;
+	border-collapse: collapse;
+}
+td {
+	padding: 5px;
+}
+
+.introduction {
+	min-height: 128px;
+	font-size: 18px;
+	width: 500px;
+}
+.introduction img {
+	float: left;
+	width: 128px;
+	padding-right: 15px;
+	padding-bottom: 15px;
+}
+
+.releases a {
+	color: rgb(50, 150, 255);
+}
+
+.releases td {
+	width: 200px;
+}
+
+.attention {
+	color: red;
+}
+
+.side_bar {
+	height: 100%;
+	position: fixed;
+	z-index: 1;
+	top: 70px;
+	left: 0;
+	padding-top: 20px;
+	background: #222222;
+	overflow-x: hidden;
+	width: 300px;
+	white-space: pre-line;
+
+	border: solid 1px white;
+	border-top: none;
+	border-left: none;
+	border-bottom: none;
+
+}
+
+.side_bar a {
+	margin-right: 10px;
+	padding-left: 30px;
+	padding-right: 10px;
+
+	margin: 0;
+
+	font-size: 15px;
+
+	color: white;
+	text-decoration: none;
+
+
+	display: inline-block;
+	width: 300px;
+	height: 20px;
+}
+
+.side_bar a:hover {
+	background: #333333;
+}
+
+.nav_bar {
+	height: 70px;
+	width: 100%;
+	position: fixed;
+	background: #222222;
+	z-index: 2;
+	top: 0;
+	left: 0;
+
+	border-bottom: solid 1px white;
+}
+
+.nav_bar a {
+	display: inline-block;
+	width: 150px;
+	height: 50px;
+	color: white;
+	text-decoration: none;
+	text-align: center;
+	font-size: 30px;
+	padding-top: 20px;
+}
+.nav_bar a:hover {
+	background: #333333;
+}
+
+
+.red {
+	color: hsl(338, 95%, 56%);
+}
+
+.blue {
+	color: hsl(190, 81%, 67%);
+	font-style: italic;
+}
+
+.purple {
+	color: hsl(261, 100%, 75%);
+}
+
+.green {
+	color: hsl(80, 76%, 53%);
+}
+
+.yellow {
+	color: hsl(54, 70%, 68%);
+}
+
+.gray {
+	color: #666666;
+}

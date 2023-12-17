@@ -1,0 +1,602 @@
+#Comments
+<
+func main(): i32 {  // this is a line comment
+	return 10
+/*
+	This is a
+	block comment
+*/
+}
+>
+
+#Packages
+Every file is contained in a package. The package has to be named in the first line of the file. If it isn't, the default package is called `main`.
+<
+package test
+>
+Packages can be imported after the package declaration.
+<
+package test
+
+import apple
+import tree
+import water
+>
+You can use names that are declared in other packages.
+<
+package main
+
+import apple
+
+func main() {
+	println!("{}", abc)  // 'abc' is imported from 'apple' and can be used like a normal variable
+	println!("{}", tree::def)  // 'tree' isn't imported, so the package has to be explicit
+}
+>
+<
+package apple
+
+var abc = 10
+>
+<
+package tree
+
+var def = 50
+>
+
+#Functions
+##Declaration
+A function `func1` with two arguments `a` and `b` of type `i32`, returning `i32`.
+<
+func func1(a: i32, b: i32): i32 {
+	// do stuff
+}
+>
+
+##Function calls
+<
+func func1() {
+	// do stuff
+}
+func func2() {
+	func1()
+}
+>
+
+##Return
+A function can return any object of a specified `return type`.
+<
+func func1(): i32 {  // 'i32' is the return type
+	// do stuff
+
+	return 1989
+}
+func func2() {
+	println!("{}", func1())  // 1989
+
+	return // functions that return 'void' don't require a return statement
+}
+>
+
+##Arguments
+A function can accept arguments.
+<
+func func1(a: i32, b: i32) {
+	println!("{}, {}", a, b)
+}
+func func2() {
+	func1(20, 21)
+}
+>
+
+#Basic types
+##Void
+The `void` type indicates that a function doesn't return anything.
+<
+func func1(): void {
+
+}
+>
+If a function returns `void`, the return type doesn't have to be explicitly named.
+<
+func func2() {  // this is the same
+
+}
+>
+`void` can only be used as a return type.
+<
+var a: void  // this doesn't compile
+>
+##Booleans
+Booleans are either `true` or `false`.
+<
+var a: bool = true
+var b: bool = false
+>
+
+##Integers
+There are eight different integer types.
+Their name consist of either an `i` or a `u`, depending on whether the integer is `signed` or `unsigned`.
+The letter is followed by a number, which represents the integer size.
+<
+var a: i32 = -200_000_000  // underscores are optional
+var b: u16 = 65000
+var c: i8  = -15
+>
+The integer size must be 8, 16, 32 or 64.
+##Strings
+Strings are just `i8[]`.
+<
+var a: i8[] = "Hello, world!"
+>
+
+#Operators
+--
+Or 				¦`true || false  =>  true`¦Second condition is not evaluated if the first one is `true`.
+-
+And				¦`true && true  =>  true`¦Second condition is not evaluated if the first one is `false`.
+-
+Equals			¦`3 == 3  =>  true`¦
+Unequal			¦`3 != 2  =>  true`¦
+-
+Less than		¦`3 < 5  =>  true`¦
+Less or equal	¦`3 <= 5  =>  true`¦
+Greater or equal¦`3 >= 5  =>  true`¦
+Greater than	¦`5 > 3  => true`¦
+-
+Plus			¦`3 + 5  =>  8`¦
+Minus			¦`5 - 3  =>  2`¦
+-
+Multiply		¦`3 * 5  =>  15`¦
+Divide			¦`6 / 3  =>  2`¦
+Modulo			¦`3 % 5  =>  2`¦
+--
+Integer operators can use different types, but only if they are both signed/unsigned. The smaller sized integer is converted to the bigger size.
+
+#Entry point
+The entry point is the `main` function.
+<
+func main(): i32 {
+	// do stuff
+}
+>
+
+#Variables
+A variable is a mutable storage unit with a specific name and type.
+<
+var a: i32
+var b: i32 = 15
+var c = 30
+>
+You can also declare multiple variables in one line.
+<
+var a: i32, b: i8[], c: i32
+a, b, c = 13, "Hello", 1989
+var d, e: i8[], f: i32 = 13, "Hello", 1989  // naming types is still optional
+>
+##Global variables
+Variable declarations can also be top level elements. However, if you are using variables that haven't been declared yet as values of global variables, you have to explicitly write the name.
+<
+var a = 10
+var b = a
+var c: i8[] = d  // type has to explicit as 'd' hasn't been declared yet
+var d = "Hello"
+>
+
+#Intrinsic functions
+An intrinsic function can be used like a normal function, but they cannot be declared by the user. Instead, they are declared in the standard library.
+Intrinsic functions are responsible for performing tasks, that aren't possible with raw code.
+You call them like regular functions, but with a `!` after the name.
+<
+func1!(10, 15)
+>
+#Printing
+Printing is done via a use of the `println` intrinsic.
+<
+println!("Hello, world!")  // prints `Hello, world!` with a new line
+>
+The first argument is a string literal, the `formatter string`. It can be a simple string, but it can also include `{}` to interpolate other objects.
+<
+println!("It's {}:{} a.m.", 7, 13)  // It's 7:13 a.m.
+>
+You can also put formatting specifiers inside the curly brackets.
+<
+println!("My favorite letter is `{c}`", 65)  // My favorite letter is `A`
+
+println!("My favorite artist is {s}", "Olivia Rodrigo")  // My favorite artist is Olivia Rodrigo
+
+println!("My favorite hexadecimal number is {x}", 65536)  // My favorite hexadecimal number is 10000
+>
+
+#Loops, branches and scopes
+##Scopes
+A scope is a block of code. Variables declared inside the block aren't accessible outside the scope.
+<
+var a = 10
+{
+	var b = 50
+	println!("{}, {}", a, b)  // 10, 50
+	a = 20
+}
+println!("{}", a)  // 20
+println!("{}", b)  // doesn't work
+>
+Scopes can be expressions. In that case, the last element in the scope will be passed from the scope.
+<
+var a = {
+	println!("Heyy")
+	15
+}
+println!("{}", a)  // 15
+>
+##While
+A `while` loop executes an element as long as a condition is `true`.
+<
+var a = 0
+while(a < 10) a += 1
+println!("{}", a)  // 10
+
+while(a > 0) {
+	println!("{}", a)
+	a -= 1
+}
+>
+##For
+A `for` loop is similar to a `while` loop, with two small changes.
+<
+for(var i = 0; i < 10; i += 1)
+	println!("{}", i)  // prints all numbers from 0 to 9
+>
+The first part in the parentheses can be any element, but it's usually a variable declaration.
+The advantage of declaring the variable there instead of before the loop, is that it's in a separate scope that way, meaning that you cannot access the variable outside the loop.
+The second part is the condition, similar to the `while` loop.
+The third part is an element that is executed after every rollback to the start of the loop, even when it's caused by a `continue`.
+The first and third part can also be omitted.
+<
+for(; true;) {
+	// do stuff
+}
+>
+Of course, leaving out both wouldn't make much sense, and it then can be replaced by a `while` statement.
+##Break and continue
+A `break` statement exits the most recent loop.
+<
+for(var i = 0; true; i += 1) {
+	if(i > 8)
+		break
+	println!("{}", i)  // 0 to 8 (including).
+}
+>
+A `continue` statement jumps back to the start. In a for loop, the third element in the brackets is still executed.
+<
+for(var i = 0; i < 10; i += 1) {
+	if(i % 2 == 0)
+		continue
+	println!("{}", i)  // all odd numbers from 1 to 9 (including)
+}
+>
+
+
+##If
+An `if` branch is used to execute code only if a condition is `true`.
+<
+if(a < 5) {
+	println!("Hello, world!")
+}
+>
+You can also add `else if` and `else` branches.
+<
+if(a < 5) {
+	println!("Hello, world!")
+}
+else if(a < 10) {
+	println!("World!")
+}
+else println!("Bye, world!")
+>
+`if` branches can be used as expressions, as long as they have an `else` branch.
+<
+var b: i32 = if(a < 5) 20 else if(a < 10) 50 else -10
+>
+
+#Arrays
+An array is a collection of objects of the same type.
+Array types are written as the base type followed by `[]`.
+<
+var a: i32[]
+>
+You can create them by listing every item.
+<
+var a = new i32[1, 2, 3, 4, 5]
+
+var b = new[1, 2, 3, 4, 5]  // the base type can usually be inferred implicitly
+>
+And you can create them with a specific size and a function that returns the objects for each index.
+<
+var a = new i32{10, i32{ i: i32 => i }}
+>
+In this example, `a` is filled with all numbers from 0 to 9 (including)
+
+##Length
+The length of an array can be determined using the `len` intrinsic.
+<
+var a = new[1, 2, 3, 4, 5]
+println!("The array contains {} elements", len!(a))  // The array contains 5 elements
+>
+##Get
+You can get a specific element of an array.
+<
+println!("The first element is {}", a[0])  // 1
+>
+If the index is negative, the length of the array is added to it.
+<
+println!("The last element is {}", a[-1])  // 5
+println!("The element before that is {}", a[-2])  // 4
+>
+If the index is not in the bounds of the array (e.g. greater or equal to the length or less than the negative length), an error is thrown.
+##Set
+Setting a specific element of an array to a different value works similar.
+<
+a[0] = 15
+a[-1] = 20
+a[-6] = 100  // error
+>
+
+#Lambda expressions
+<
+var a: i32(i8[]) = { str => 15 }
+var b = i32{ str: i8[] => 15 }
+var c = i32{ =>
+	println!("Hello, world!")
+	return 15
+}
+var d: void() = void{ => println!("Hey") }  // if a one-line lambda expression returns void, it has to be explicit
+var e: void() = { =>
+	println!("Hey")
+}  // multiline expression, therefore the return type doesn't have to be explicit
+>
+!Capturing variables is not yet possible and crashes the compiler if you try anyway
+
+#Classes
+Classes are declared as top level elements.
+<
+class Class1 {
+	// stuff
+}
+>
+They need one constructor. That is just a function that is called when an instance of the class is created. However, they cannot return.
+<
+class Class1 {
+	constructor(a: i32) {
+		// do stuff
+	}
+}
+>
+You can create new instances using the `new` keyword.
+<
+var a: Class1 = new Class1(15)  // argument is passed on to constructor
+>
+##Properties
+Classes can contain variables, so called `properties`.
+They cannot be directly initialized. Instead, they have to be initialized in the constructor.
+<
+class Class1 {
+	var name: i8[]
+	var age: i32
+
+	constructor(age: i32) {
+		name = "Abigail"
+		this.age = age  // `this` is a reference to the new instance
+	}
+}
+>
+You can access them using a `.`.
+<
+var a = new Class1(15)
+println!("{s}, {}", a.name, a.age)  // Abigail, 15
+>
+You can also change them.
+<
+a.age = 16
+>
+##Functions
+A class can also contain functions.
+<
+class Class1 {
+	var name: i8[]
+	var age: i32
+
+	constructor(age: i32) {
+    	name = "Abigail"
+    	this.age = age
+    }
+
+    func print() {
+    	println!("{s}, {}", name, age)  // Abigail, 15
+    }
+}
+>
+They can be accessed like properties, but they cannot be changed.
+<
+a.print()
+>
+##Inheritance
+A class can be a subclass of another class.
+<
+class Human {
+	var name: i8[]
+	constructor(name: i8[]) {
+		this.name = name
+	}
+
+	func print() {
+		println!("My name is {s}", name)
+	}
+}
+class Student : Human {  // Student is a subclass of Human
+	var grade: i32
+	constructor(name: i8[], grade: i32) {
+		this.name = name  // `name` is passed on from Human and thus has to be initialized
+		this.grade = grade
+	}
+}
+>
+`Student` can be treated now as `Human`.
+<
+func nameLength(parent: Parent): i32 {
+	return len!(parent.name)
+}
+func main(): i32 {
+	var student = new Student("Tim", 10)
+	student.print()  // function is taken on from Human
+
+	nameLength(student)  // `Student` is of type `Human`
+
+	return 0
+}
+>
+##Virtual and override
+A function in a class can be `virtual`.
+<
+class Human {
+	var name: i8[]
+	constructor(name: i8[]) {
+		this.name = name
+	}
+
+	virtual func print() {
+		println!("My name is {s}", name)
+	}
+}
+>
+Virtual functions can be overridden by subclasses and get a new implementation.
+<
+class Student : Human {
+	var grade: i32
+	constructor(name: i8[], grade: i32) {
+		this.name = name
+		this.grade = grade
+	}
+	
+	override func print() {  // function signature has to stay the same
+		println!("My name is {s} and I`m in grade {}", name, grade)
+	}
+}
+>
+If you call `print` now, the program will automatically figure out which function it has to call.
+<
+new Human().print()  // calls Human.print
+new Student().print()  // calls Student.print
+>
+This even works when you don't know the type of the object.
+<
+func test(p: Parent) {
+	p.print()  // figures out which function to call
+}
+>
+##Type checking
+You can check whether an object is an instance of a certain class using the `~` operator.
+<
+if(a ~ Student)
+	println!("It is a student!")  // will only print if a is a student
+>
+Let's say `a` is of type `Student`.
+<
+if(a ~ Human)
+	println!("It is a human!")
+>
+This code will still print, as `Student` is a subclass of `Human`.
+Type checking only works on classes.
+
+#Smart casting
+Look at the following example.
+<
+var a: Human = new Student("Tim", 10)
+println!("{}", a.grade)
+>
+Although `a` is of type `Human`, you can use it as a `Student`, because the compiler knows that it has to be an instance of that type.
+This also works after a type check.
+<
+if(a ~ Student)
+	println!("{}", a.grade)
+>
+However, as soon as you change the value of `a`, the compiler will forget the smart cast type, as the type may have changed.
+<
+if(a ~ Student) {
+	println!("{}", a.grade)
+	a = new Human("Taylor Swift")
+	println!("{}", a.grade)  // doesn't work anymore
+}
+>
+Note that smart casting only works on variables, not on properties or array elements.
+
+#Null
+Heap allocated objects (classes and arrays) can be nullable. That is indicated by adding a `?` after the type name.
+<
+var a: Human?
+>
+Nullable objects can be instances of the base type...
+<
+a = new Human("Taylor Swift")
+>
+...but they can also be `null`.
+<
+a = null
+>
+You cannot do anything with nullable objects, as there's always the potential of them being `null`, which would result in undefined behavior.
+<
+println!("{s}", a.name)  // doesn't work
+>
+However, you can `null assert` them.
+<
+println!("{}", a!!.name)  // does work
+>
+If `a` was `null` in this case, a runtime error would occur.
+Smart casting also works with null asserts.
+<
+println!("{}", a!!.name)
+println!("{}", a.name)  // compiler knows that 'a' cannot be null here
+>
+
+#Tuples
+Tuples are immutable collections of elements.
+<
+var a: (i32, i8[])
+a = (100, "abc")
+>
+The names of the elements are their indexes by default, but you can change them.
+<
+a = (p3: 100, p4: 500)
+var b: (p1: i32, i8[])
+b = (50, "def")
+>
+You can access its elements.
+<
+println!("{}", a.0)  // 100
+println!("{s}", a.1)  // abc
+println!("{}, {}", b.p1, b.1)  // 50, def
+>
+However, you cannot reassign them.
+<
+a.0 = 50  // doesn't work
+>
+
+#Unwrapping
+Unwrapping currently is only supported on tuples. It is used to use multiple elements inside one object as separate arguments.
+<
+var tuple = (1, 2, 3)
+println!("{} {} {}", tuple...)  // 1 2 3
+>
+An unwrapped value can be enclosed by other arguments.
+<
+test(1, 2, tuple..., 78)
+>
+Unwrapping also works in variable initialization.
+<
+var a, b, c, d = tuple..., 25
+a, b, c = tuple...
+>
+If you don't want a specific element of a tuple in a variable declaration, you can name the variable `_`.
+<
+var a, _, _, b = tuple..., 100
+>
