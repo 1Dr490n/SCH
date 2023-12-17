@@ -37,7 +37,12 @@ fun main(args: Array<String>) {
     var o: String? = null
     var s = false
 
-    val files = mutableListOf<File>()
+    val files = mutableListOf(File("__TEMP__.sch"))
+
+    File("__TEMP__.sch").also {
+        it.deleteOnExit()
+    }.writeBytes(object{}.javaClass.classLoader.getResourceAsStream("std.sch").readAllBytes())
+
     val ite = args.toSet().iterator()
     for (it in ite) {
         when(it) {
@@ -120,14 +125,18 @@ fun main(args: Array<String>) {
         IRBuilder.declareFunc(it.second.name, it.first)
     }
 
-    File("out.ll").writeText(IRBuilder.build())
+    File("__TEMP__.ll").also { it.deleteOnExit() }.writeText(IRBuilder.build())
+    File("__TEMP__.o").also {
+        it.deleteOnExit()
+    }.writeBytes(object{}.javaClass.classLoader.getResourceAsStream("lib.o").readAllBytes())
 
-    val args = mutableListOf("out.ll", "lib.ll")
+
+    val args = mutableListOf("clang", "__TEMP__.ll", "__TEMP__.o")
     if(o != null) args += "-o $o"
     if(emitLlvm) args += "-S -emit-llvm"
     if(s) args += "-S"
 
-    val p = Runtime.getRuntime().exec("clang", args.toTypedArray())
+    val p = Runtime.getRuntime().exec(args.toTypedArray())
     println(p.inputStream.bufferedReader().readText())
     val err = p.errorStream.bufferedReader().readText()
     println(err)
