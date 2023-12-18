@@ -13,6 +13,9 @@
 }
 
 declare ptr @malloc(i64)
+declare ptr @realloc(ptr, i64)
+declare i8 @fgetc(ptr)
+declare ptr @__acrt_iob_func(i32)
 declare void @free(ptr)
 declare void @printf(ptr, ...)
 declare void @exit(i32)
@@ -197,6 +200,69 @@ n:
 	unreachable
 y:
 	ret void
+}
+
+define ptr @read(ptr %file) {
+	%str = alloca ptr
+	%size = alloca i64
+	%len = alloca i32
+	store i64 16, ptr %size
+	store i32 0, ptr %len
+	%.0 = call ptr @malloc(i64 16)
+	store ptr %.0, ptr %str
+
+	br label %cond
+cond:
+	%ch = call i8 @fgetc(ptr %file)
+	%iseof = icmp eq i8 %ch, -1
+	%isnew = icmp eq i8 %ch, 10
+	%.1 = or i1 %iseof, %isnew
+	br i1 %.1, label %e, label %l
+l:
+	%.2 = load ptr, ptr %str
+	%.3 = load i32, ptr %len
+	%.4 = zext i32 %.3 to i64
+	%strptr = getelementptr [1 x i8], ptr %.2, i64 %.4
+	store i8 %ch, ptr %strptr
+	%.5 = add i32 1, %.3
+	store i32 %.5, ptr %len
+
+	%.6 = zext i32 %.5 to i64
+	%.7 = load i64, ptr %size
+	%.8 = icmp eq i64 %.6, %.7
+	br i1 %.8, label %realloc, label %cond
+realloc:
+	%.9 = add i64 %.7, 16
+	store i64 %.9, ptr %size
+
+	%.10 = call ptr @realloc(ptr %.2, i64 %.9)
+	store ptr %.10, ptr %str
+
+	br label %cond
+e:
+
+	%.11 = load ptr, ptr %str
+	%.12 = load i32, ptr %len
+	%.13 = zext i32 %.12 to i64
+	%.14 = call ptr @realloc(ptr %.11, i64 %.13)
+
+	%wrapper = call ptr @malloc(i64 32)
+
+	store i32 0, ptr %wrapper
+
+	%sizeptr = getelementptr %Array, ptr %wrapper, i32 0, i32 1
+	store i32 %.12, ptr %sizeptr
+
+	%arrayptr = getelementptr %Array, ptr %wrapper, i32 0, i32 2
+	store ptr %.14, ptr %arrayptr
+
+	%destoryptr = getelementptr %Array, ptr %wrapper, i32 0, i32 3
+	store ptr null, ptr %destoryptr
+
+	%is_constantptr = getelementptr %Array, ptr %wrapper, i32 0, i32 4
+	store i1 0, ptr %is_constantptr
+
+	ret ptr %wrapper
 }
 
 @.str_e_bounds = constant [44 x i8] c"%sIndex %d out of bounds for array size %d\0a\00"

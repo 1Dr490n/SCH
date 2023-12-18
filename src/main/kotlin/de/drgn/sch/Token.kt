@@ -72,6 +72,7 @@ abstract class Token(val line: Line, val charForm: Char, val isObject: Boolean) 
     class Lambda(line: Line) : Token(line, 'λ', false)
     class Continue(line: Line) : Token(line, '→', false)
     class Break(line: Line) : Token(line, '¦', false)
+    class Not(line: Line) : Token(line, '¬', false)
 
     class Namespace(line: Line, val namespaceLine: Line, val namespace: String, name: String) : Name(line, name)
 

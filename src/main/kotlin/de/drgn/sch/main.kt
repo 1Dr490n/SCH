@@ -24,6 +24,8 @@ val func_Array_get = FuncSignature(TPtr, TPtr, tI32, tI32, TPtr) to VGlobal("Arr
 val func_null_assert = FuncSignature(TVoid, TPtr, TPtr) to VGlobal("null_assert")
 val func_is_subclass = FuncSignature(tI1, TPtr, tI32, TPtr) to VGlobal("is_subclass")
 val func_is_subclass_assert = FuncSignature(TVoid, /*obj*/TPtr, /*type*/tI32, /*inheritances*/TPtr, /*typenames*/TPtr, /*line*/TPtr) to VGlobal("is_subclass_assert")
+val func_read = FuncSignature(TPtr,  TPtr) to VGlobal("read")
+val func_fdopen = FuncSignature(TPtr, tI32, TPtr) to VGlobal("fdopen")
 
 val struct_Array = TStruct(tI32, tI32, TPtr, tI1)
 val struct_Class = TStruct(tI32, tI32, TPtr)
@@ -71,7 +73,6 @@ fun main(args: Array<String>) {
     ast.forEach {
         it.code()
     }
-
     tree.forEach {
         it.ir()
     }
@@ -120,7 +121,9 @@ fun main(args: Array<String>) {
         func_Array_get,
         func_null_assert,
         func_is_subclass,
-        func_is_subclass_assert
+        func_is_subclass_assert,
+        func_read,
+        func_fdopen
     ).forEach {
         IRBuilder.declareFunc(it.second.name, it.first)
     }

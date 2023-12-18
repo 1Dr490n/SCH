@@ -636,9 +636,16 @@ class TreeSign(tokens: TokenLine, val sign: Token.Sign, val obj: TreeObject) : T
     override fun _ir(builder: IRBuilder.FunctionBuilder): VValue {
         val o = obj.ir(builder)
         if(sign.c == '+') return o
-        return builder.mul(o, VInt(o.type as TInt, -1))
+        return if(o.type is TFloat) builder.fneg(o) else builder.sub(VInt(o.type as TInt, 0), o)
     }
 }
+class TreeNot(tokens: TokenLine, val obj: TreeObject) : TreeObject(tokens, DTBool) {
+    override fun _ir(builder: IRBuilder.FunctionBuilder): VValue {
+        val o = obj.ir(builder)
+        return builder.icmp("eq", o, VInt(tI1, 0))
+    }
+}
+
 class TreeThis(tokens: TokenLine) : TreeObject(tokens, openFuncDefinitions.peek().let { it.inClass?:it.constructorOf!! }) {
     override fun _ir(builder: IRBuilder.FunctionBuilder) = openFuncDefinitions.peek().receiver!!
 }
@@ -664,7 +671,7 @@ class TreeIfO(tokens: TokenLine, val ifs: List<Triple<TreeObject, Block, TreeObj
             if(vars != null)
                 obj.type.storeInVars(builder, o, vars)
 
-            res += o to ".$y"
+            res += o to builder.lastLabel
             incrementD(builder, o, elseE.second.type)
 
             blocks.pop()

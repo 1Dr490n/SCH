@@ -317,9 +317,12 @@ fun parseObject(tokens: TokenLine, isStatement: Boolean = false): ASTObject {
         return ASTIs(tokens, parseObject(tokens.dropLast(2)), parseType(listOf(tokens.last())))
     }
 
-    if(tokens[0] is Token.Sign) {
-        return ASTSign(tokens, tokens[0] as Token.Sign, parseObject(tokens.drop(1)))
+    when(val t = tokens[0]) {
+        is Token.Sign -> return ASTSign(tokens, t, parseObject(tokens.drop(1)))
+        is Token.Not -> return ASTNot(tokens, parseObject(tokens.drop(1)))
     }
+
+
 
     tokens.afterBrackets()?.also { (brackets, after) ->
         if(brackets[0] is Token.OpenRound) {

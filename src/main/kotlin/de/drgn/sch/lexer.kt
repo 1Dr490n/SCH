@@ -291,6 +291,7 @@ fun lex(file: File, keepComments: Boolean = false): Triple<DFile, MutableList<To
             c == '/' -> tokens += Token.Divide(singleCharLine)
             c == '%' -> tokens += Token.Modulo(singleCharLine)
             c == '~' -> tokens += Token.Is(singleCharLine)
+            c == '!' -> tokens += Token.Not(singleCharLine)
 
             text.drop(ite.nextIndex() - 1).joinToString("").startsWith("...") -> {
                 ite.next()

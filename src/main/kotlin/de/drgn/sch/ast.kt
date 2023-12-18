@@ -180,10 +180,15 @@ class ASTIntrinsicDeclaration(
     companion object {
         val intrinsics =
             mapOf<String, (tokens: TokenLine, args: List<Any>, builder: IRBuilder.FunctionBuilder) -> VValue?>(
-                /*"std::print" to { line, args, builder ->
-                    format(line, builder, args[0].constant as String, args[0], args.drop(1))
+                "std::print" to { tokens, args, builder ->
+                    val format = args[0] as List<*>
+
+                    if(format.size != 1 || format[0] !is Token.StringLiteral)
+                        illegalIntrinsic("Expected string literal", (format as TokenLine).line())
+
+                    format(tokens, builder, (format[0] as Token.StringLiteral).string, format[0] as Token.StringLiteral, args.drop(1).map { it as TreeObject })
                     null
-                },*/
+                },
                 "std::println" to { tokens, args, builder ->
 
                     val format = args[0] as List<*>
@@ -194,19 +199,9 @@ class ASTIntrinsicDeclaration(
                     format(tokens, builder, (format[0] as Token.StringLiteral).string + '\n', format[0] as Token.StringLiteral, args.drop(1).map { it as TreeObject })
                     null
                 },
-                /*"std::stoi" to { line, args, builder ->
-                    builder.callFunc(atoi.first, atoi.second, args[0].ir(builder))
+                "std::readln" to { tokens, args, builder ->
+                    TreeFuncCall.process(builder, func_read, DTArray(DTI8), listOf(builder.callFunc(func_fdopen.first, func_fdopen.second, VInt(tI32, 0), VString("r"))!!))!!.first
                 },
-                "rnd::seed" to { line, args, builder ->
-                    builder.callFunc(srand.first, srand.second, args[0].ir(builder))
-                    null
-                },
-                "rnd::randint" to { line, args, builder ->
-                    builder.callFunc(rand.first, rand.second)
-                },
-                "std::slen" to { line, args, builder ->
-                    builder.extractValue(args[0].ir(builder), 0)
-                },*/
                 "std::len" to { tokens, args, builder ->
                     val o = parseObject(args[0] as TokenLine).obj()
                     if(o.type !is DTArray) illegalIntrinsic("Expected array but found '${o.type}'", o.tokens.line())
@@ -250,24 +245,41 @@ class ASTIntrinsicDeclaration(
         }
 
         private fun formatObj(obj: TreeObject, builder: IRBuilder.FunctionBuilder, parameter: String = ""): Pair<String, List<VValue>> {
-            if(obj is TreeStringLiteral) return obj.value to emptyList()
+            if(obj is TreeStringLiteral) {
+                if(parameter.isNotEmpty()) illegalIntrinsic("Illegal formatting specifier for type 'i8[]'", obj.tokens.line())
+                return obj.value to emptyList()
+            }
             val sb = StringBuilder()
             val resArgs = mutableListOf<VValue>()
+
+            if(obj.type is DTArray && obj.type.of is DTI8) {
+                if(parameter.isNotEmpty()) illegalIntrinsic("Illegal formatting specifier for type 'i8[]'", obj.tokens.line())
+                val o = obj.ir(builder)
+                resArgs += builder.load(tI32, builder.elementPtr(struct_Array, o, VInt(tI32, 0), VInt(tI32, 1)))
+                resArgs += builder.load(TPtr, builder.elementPtr(struct_Array, o, VInt(tI32, 0), VInt(tI32, 2)))
+                return "%.*s" to resArgs
+            }
+
             when (val type = obj.type) {
                 is DTInt -> {
                     val t = when(type) {
-                        is DTI8 -> {
+                        is DTI8, is DTU8 -> {
                             (if(parameter == "c") "c" else "h") to TreeCast(obj.tokens, obj, DTI16)
                         }
 
                         is DTI16 -> "h" to obj
+                        is DTU16 -> "hu" to obj
                         is DTI32 -> "" to obj
+                        is DTU32 -> "u" to obj
                         is DTI64 -> "ll" to obj
+                        is DTU64 -> "llu" to obj
                         else -> TODO()
                     }
                     sb.append('%').append(t.first)
                     resArgs += t.second.ir(builder)
-                    if (parameter == "x") sb.append('x') else if(parameter.isEmpty()) sb.append('d') else illegalIntrinsic("Illegal formatting specifier for type '$type'", obj.tokens.line())
+                    if(type.signed) sb.append('d')
+                    if (parameter == "x") sb.append('x')
+                    else if(parameter.isNotEmpty()) illegalIntrinsic("Illegal formatting specifier for type '$type'", obj.tokens.line())
                 }
                 is DTFloat -> {
                     sb.append("%${if(parameter.isEmpty()) "" else "." + (parameter.toUIntOrNull()?:illegalIntrinsic("Illegal formatting specifier for type '$type'", obj.tokens.line()))}f")
@@ -279,16 +291,6 @@ class ASTIntrinsicDeclaration(
                     resArgs += builder.select(obj.ir(builder), VString("true"), VString("false"))
                     if(parameter.isNotEmpty()) illegalIntrinsic("Illegal formatting specifier for type 'bool'", obj.tokens.line())
                 }
-
-                is DTArray -> {
-                    if(type.of is DTI8 && parameter == "s") {
-                        val o = obj.ir(builder)
-                        resArgs += builder.load(tI32, builder.elementPtr(struct_Array, o, VInt(tI32, 0), VInt(tI32, 1)))
-                        resArgs += builder.load(TPtr, builder.elementPtr(struct_Array, o, VInt(tI32, 0), VInt(tI32, 2)))
-                        sb.append("%.*s")
-                    } else illegalTodo(obj.tokens.line())
-                }
-
                 else -> illegalIntrinsic("Cannot print objects of type '$type'", obj.tokens.line())
             }
             return sb.toString() to resArgs
@@ -623,7 +625,7 @@ class ASTIntLiteral(tokens: TokenLine, val literal: Token.IntLiteral) : ASTObjec
             literal.value.toLongOrNull() != null -> DTI64
             else -> DTU64
         }
-        val value = literal.value.toLong()
+        val value = literal.value.toLongOrNull() ?: literal.value.toULong().toLong()
         return TreeIntLiteral(tokens, value, type)
     }
 }
@@ -740,7 +742,7 @@ class ASTGenerateArray(tokens: TokenLine, val elementType: ASTType?, val size: A
 class ASTGet(tokens: TokenLine, val obj: ASTObject, val index: ASTObject) : ASTObject(tokens) {
     override fun _obj(type: DType?): TreeObject {
         val o = obj.obj(if(type == null) null else DTArray(type))
-        val i = index.obj(DTI32)
+        val i = index.obj(DTU32)
         if(o.type !is DTArray) illegal("Expected array but found '${o.type}'", o.tokens.line())
         return TreeGet(tokens, o, i)
     }
@@ -1026,8 +1028,14 @@ class ASTIncrease(tokens: TokenLine, val storage: ASTStorage) : ASTObject(tokens
 class ASTSign(tokens: TokenLine, val token: Token.Sign, val obj: ASTObject) : ASTObject(tokens) {
     override fun _obj(type: DType?): TreeObject {
         val o = obj.obj(type)
-        if(o.type !is DTInt || !o.type.signed) illegal("Expected signed integer but found '${o.type}'", obj.tokens.line())
+        if((o.type !is DTInt || !o.type.signed) && o.type !is DTFloat) illegal("Expected signed integer or float but found '${o.type}'", obj.tokens.line())
         return TreeSign(tokens, token, o)
+    }
+}
+class ASTNot(tokens: TokenLine, val obj: ASTObject) : ASTObject(tokens) {
+    override fun _obj(type: DType?): TreeObject {
+        val o = obj.obj(DTBool)
+        return TreeNot(tokens, o)
     }
 }
 class ASTThis(tokens: TokenLine) : ASTObject(tokens) {
